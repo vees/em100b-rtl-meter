@@ -2,70 +2,62 @@
 import './App.css';
 import ReactSpeedometer from "react-d3-speedometer";
 import React from 'react';
+import { Helmet } from 'react-helmet'
 var mqtt = require('mqtt')
 
 var options = {
     protocol: 'mqtts',
-    // clientId uniquely identifies client
-    // choose any string you wish
-    //clientId: 'vees'+ Math.random().toString(16).substr(2, 8)    
 };
 var client  = mqtt.connect('mqtt://test.mosquitto.org:8081', options);
 
-//var client  = mqtt.connect('mqtt://test.mosquitto.org:1884')
- 
 client.on('connect', function () {
   client.subscribe('home/rtl_433', function (err) {
     if (!err) {
     }
+    else {
+      alert("Can't connect to data source, please reload page")
+    }
   })
 })
  
-
-
-
-
-
 class Wattage extends React.Component
 {
-    constructor(props) {
-      super(props);
-      this.state = { watts: 0 };
-    }
+  constructor(props) {
+    super(props);
+    this.state = { watts: 0 };
+  }
 
   componentDidMount() {
-      client.on('message', (topic, message) => {
-      // message is Buffer
+    client.on('message', (topic, message) => {
       console.log(message.toString())
       var packet=JSON.parse(message)
       if ("gap" in packet) {
         var watts = Math.round(3600000/packet["gap"])
         this.setState({watts: watts})
       }});
-    }
+  }
 
-   render() {
+  render() {
 		return (
-			<ReactSpeedometer value={this.state.watts} minValue={0} maxValue={10000} 
-  startColor="green"
-  segments={5}
-  endColor="red"
-  currentValueText="#{value} watts"
-  currentValuePlaceholderStyle={"#{value}"}
-  // fluidWidth={true}
-  height={300}
+			<ReactSpeedometer value={this.state.watts} minValue={0} maxValue={6000} 
+        startColor="green"
+        segments={6}
+        endColor="red"
+        currentValueText="#{value} watts"
+        currentValuePlaceholderStyle={"#{value}"}
+        needleTransitionDuration={30000}
+        height={300}
       />
 		);
   }
 }
 
-
-
 function App() {
-
-
-
   return (
+    <>
+    <Helmet>
+      <title>Power meter live display proof of concept</title>
+    </Helmet>
     <div className="App">
       <div className="meters">
   			<Wattage />
@@ -82,6 +74,7 @@ function App() {
         <p>In this way it is as close to a real time information display as can be done for free.</p>
       </div>
     </div>
+    </>
   );
 }
 
