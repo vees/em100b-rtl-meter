@@ -28,6 +28,25 @@
   color: #61dafb;
 }
 
+.readme {
+  max-width: 400px;
+  margin: -100px auto;
+  text-align: justify;
+  padding: 0px 20px 20px 20px;
+}
+
+.meters {
+  height: 300px;
+  max-width: 400px;
+  margin: 0px auto;
+  text-align: justify;
+  padding-top: 30px;
+    display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
