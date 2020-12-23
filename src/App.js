@@ -1,16 +1,16 @@
 //import logo from './logo.svg';
 import './App.css';
 import ReactSpeedometer from "react-d3-speedometer";
-import React, { useState} from 'react';
+import React from 'react';
 var mqtt = require('mqtt')
 
 var options = {
     protocol: 'mqtts',
     // clientId uniquely identifies client
     // choose any string you wish
-    clientId: 'vees'    
+    //clientId: 'vees'+ Math.random().toString(16).substr(2, 8)    
 };
-var client  = mqtt.connect('ws://test.mosquitto.org:8081', options);
+var client  = mqtt.connect('mqtt://test.mosquitto.org:8081', options);
 
 //var client  = mqtt.connect('mqtt://test.mosquitto.org:1884')
  
@@ -24,22 +24,29 @@ client.on('connect', function () {
 
 
 
-function Wattage()
+
+
+class Wattage extends React.Component
 {
-  const [watts, setWatts] = useState(0);
+    constructor(props) {
+      super(props);
+      this.state = { watts: 0 };
+    }
 
+  componentDidMount() {
+      client.on('message', (topic, message) => {
+      // message is Buffer
+      console.log(message.toString())
+      var packet=JSON.parse(message)
+      if ("gap" in packet) {
+        var watts = Math.round(3600000/packet["gap"])
+        this.setState({watts: watts})
+      }});
+    }
 
-client.on('message', function (topic, message) {
-  // message is Buffer
-  console.log(message.toString())
-  var packet=JSON.parse(message)
-  if ("gap" in packet) {
-    var watts = Math.round(3600000/packet["gap"])
-    setWatts(watts)
-  }
-})
+   render() {
 		return (
-			<ReactSpeedometer value={watts} minValue={0} maxValue={10000} 
+			<ReactSpeedometer value={this.state.watts} minValue={0} maxValue={10000} 
   startColor="green"
   segments={5}
   endColor="red"
@@ -49,9 +56,15 @@ client.on('message', function (topic, message) {
   height={300}
       />
 		);
+  }
 }
 
+
+
 function App() {
+
+
+
   return (
     <div className="App">
       <div className="meters">
