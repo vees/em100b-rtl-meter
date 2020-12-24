@@ -1,8 +1,13 @@
 //import logo from './logo.svg';
 import './App.css';
 import ReactSpeedometer from "react-d3-speedometer";
+import Odometer from 'react-odometerjs';
+import 'odometer/themes/odometer-theme-train-station.css'
+
+
 import React from 'react';
 import { Helmet } from 'react-helmet'
+
 var mqtt = require('mqtt')
 
 var options = {
@@ -32,8 +37,11 @@ class Wattage extends React.Component
       console.log(message.toString())
       var packet=JSON.parse(message)
       if ("gap" in packet) {
-        var watts = Math.round(3600000/packet["gap"])
-        this.setState({watts: watts})
+        var watts = Math.round(3600000.0/packet["gap"])
+        var odoupdate = watts/1800.0;
+        console.log(odoupdate)
+        console.log(this.state.totalWattHours)
+        this.setState({watts: watts, totalWattHours: this.state.totalWattHours+odoupdate})
       }});
   }
 
@@ -45,14 +53,49 @@ class Wattage extends React.Component
         endColor="red"
         currentValueText="#{value} watts"
         currentValuePlaceholderStyle={"#{value}"}
-        needleTransitionDuration={30000}
+        needleTransitionDuration={15000}
         height={300}
       />
 		);
   }
 }
 
+class WattHours extends React.Component 
+{
+    constructor(props) {
+    super(props);
+    this.state = { totalWattHours: 0 };
+    this.firstReading = null;
+    this.revolutions = 0;
+    this.lastReading = 0;
+  }
+
+  componentDidMount() {
+    client.on('message', (topic, message) => {
+      console.log(message.toString())
+      var packet=JSON.parse(message)
+      if ("impulses" in packet) {
+        var reading=packet["impulses"]
+        if (reading<this.lastReading) { this.revolutions++; }
+        if (this.firstReading==null) { this.firstReading = reading};
+        var totalWattHours = reading+(65536*this.revolutions)-this.firstReading;
+        this.lastReading = reading;
+        this.setState({totalWattHours: totalWattHours})
+      }});
+  }
+
+  render() {
+    return (
+      <>
+      <Odometer value={this.state.totalWattHours} format="(,ddd).dd" duration={15000} /> Wh consumed
+      </>
+    );
+  }
+}
+
 function App() {
+
+
   return (
     <>
     <Helmet>
@@ -61,6 +104,9 @@ function App() {
     <div className="App">
       <div className="meters">
   			<Wattage />
+      </div>
+      <div className="totals">
+        <WattHours />
       </div>
       <div className="readme">
         <p>This page is a proof of concept to connect a home power meter to a live display on the web.</p>
@@ -72,7 +118,7 @@ function App() {
         The rtl_433 decodes each packet using a <a href="https://github.com/jbrzozoski/rtl_433/commit/e04529c565591a6129098d4e3eb8b815c4feab72">recent patch</a> and immediately passes it to a <a href="https://mosquitto.org/man/mosquitto_pub-1.html">mosquitto_pub client</a> to send to the public <a href="https://mosquitto.org/">MQTT server/broker</a> at <a href="https://test.mosquitto.org/">test.mosquitto.org</a>.</p>
         <p>When a web browser loads this page, it contacts the MQTT server and subscribes to the specific topic using a websocket. This listener stays open as long as the page is open, and any time a new message is received the current power level on the indicator is updated. This is powered by a combination of <a href="https://www.npmjs.com/package/mqtt">mqtt</a> and <a href="https://www.npmjs.com/package/react-d3-speedometer">react-d3-speedometer</a> and designed using <a href="https://reactjs.org/">ReactJS</a> to a static build.</p>
         <p>In this way it is as close to a real time information display as can be done for free.</p>
-        <p>Code and setup instructions are available in the <a href="https://github.com/vees/em100b-rtl-meter">vees/em100b-rtl-meter</a> repository on Github.</p>.
+        <p>Code and setup instructions are available in the <a href="https://github.com/vees/em100b-rtl-meter">vees/em100b-rtl-meter</a> repository on Github.</p>
       </div>
     </div>
     </>
