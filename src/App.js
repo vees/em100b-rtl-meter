@@ -1,9 +1,10 @@
 //import logo from './logo.svg';
 import './App.css';
 import ReactSpeedometer from "react-d3-speedometer";
-import Odometer from 'react-odometerjs';
-import 'odometer/themes/odometer-theme-car.css'
-
+// import Odometer from 'react-odometerjs';
+// import 'odometer/themes/odometer-theme-car.css'
+import NumberEasing from 'react-number-easing';
+  
 
 import React from 'react';
 import Moment from 'react-moment';
@@ -57,7 +58,7 @@ class WattHours extends React.Component
 
   render() {
     return (
-      <div><Odometer minIntegerLen={5} value={this.props.totalWattHours.toFixed(1)} format="(,ddd).d" duration={15000}></Odometer> Wh consumed</div>
+      <div><NumberEasing value={this.props.totalWattHours} speed={31000} decimals={1} ease="linear" /> Wh consumed</div>
     );
   }
 }
@@ -75,7 +76,7 @@ class Frequency extends React.Component
       return (<div>No signal received</div>);
     }
     return (
-      <div>Last heard <Moment date={lastHeard} format="HH:mm:ss" /> on {this.props.frequency} MHz</div>
+      <div>Last heard <Moment date={lastHeard} format="HH:mm:ss" /> on {this.props.frequency.toFixed(3)} MHz</div>
     );
   }
 }
@@ -118,7 +119,7 @@ class MosquittoListener extends React.Component
           if (this.firstReading==null) { this.firstReading = reading-this.state.totalWattHours};
           var totalWattHours = reading+(65536*this.revolutions)-this.firstReading;
           var adjustment = this.state.totalWattHours-totalWattHours
-          console.log("Adjusting by " + adjustment.toString())
+          console.log("Adjusting by " + adjustment.toFixed(1))
           this.lastReading = reading;
           this.setState({totalWattHours: totalWattHours})
           console.log(message.toString())
