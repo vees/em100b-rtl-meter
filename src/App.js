@@ -6,7 +6,10 @@ import 'odometer/themes/odometer-theme-car.css'
 
 
 import React from 'react';
+import Moment from 'react-moment';
 import { Helmet } from 'react-helmet'
+
+Moment.startPooledTimer(2000);
 
 var mqtt = require('mqtt')
 
@@ -54,7 +57,25 @@ class WattHours extends React.Component
 
   render() {
     return (
-      <div><Odometer value={this.props.totalWattHours.toFixed(1)} minIntegerLen={5} format="(,ddd).d" duration={15000} /> Wh consumed</div>
+      <div><Odometer minIntegerLen={5} value={this.props.totalWattHours.toFixed(1)} format="(,ddd).d" duration={15000}></Odometer> Wh consumed</div>
+    );
+  }
+}
+
+class Frequency extends React.Component 
+{
+  render() {
+    var lastHeard = null;
+    if (this.props.lastHeard != null)
+    {
+      lastHeard = new Date(this.props.lastHeard * 1000);
+    }
+    else 
+    {
+      return (<div>No signal received</div>);
+    }
+    return (
+      <div>Last heard <Moment date={lastHeard} format="HH:mm:ss" /> on {this.props.frequency} MHz</div>
     );
   }
 }
@@ -63,7 +84,7 @@ class MosquittoListener extends React.Component
 {
   constructor(props) {
     super(props);
-    this.state = { watts: 0, totalWattHours: 0  };
+    this.state = { watts: 0, totalWattHours: 0, frequency: 433.920, lastHeard: null };
     this.firstReading = null;
     this.revolutions = 0;
     this.lastReading = 0;
@@ -97,7 +118,7 @@ class MosquittoListener extends React.Component
           if (this.firstReading==null) { this.firstReading = reading-this.state.totalWattHours};
           var totalWattHours = reading+(65536*this.revolutions)-this.firstReading;
           var adjustment = this.state.totalWattHours-totalWattHours
-          console.log("Adjusting by" + adjustment.toString())
+          console.log("Adjusting by " + adjustment.toString())
           this.lastReading = reading;
           this.setState({totalWattHours: totalWattHours})
           console.log(message.toString())
@@ -105,6 +126,7 @@ class MosquittoListener extends React.Component
         else { console.log("duplicate impulse ignored") }
         this.last_impulse_ts=packet["time"]
       }
+      this.setState({frequency: packet["freq"], lastHeard: packet["time"]})
     })
   }
 
@@ -116,6 +138,9 @@ class MosquittoListener extends React.Component
         </div>
         <div className="totals">
           <WattHours totalWattHours={this.state.totalWattHours} />
+        </div>
+        <div className="frequency">
+          <Frequency frequency={this.state.frequency} lastHeard={this.state.lastHeard} />
         </div>
         <div className="readme">
           <p>This page is a proof of concept to connect a home power meter to a live display on the web.</p>
