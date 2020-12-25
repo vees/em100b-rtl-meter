@@ -6,13 +6,16 @@ import Moment from 'react-moment';
 
 var mqtt = require('mqtt')
 
+const mqtt_server = 'mqtt://test.mosquitto.org:8081'
+const mqtt_topic = 'home/rtl_433'
+
 var options = {
     protocol: 'mqtts',
 };
-var client  = mqtt.connect('mqtt://test.mosquitto.org:8081', options);
+var client  = mqtt.connect(mqtt_server, options);
 
 client.on('connect', function () {
-  client.subscribe('home/rtl_433', function (err) {
+  client.subscribe(mqtt_topic, function (err) {
     if (!err) {
     }
     else {
@@ -20,6 +23,37 @@ client.on('connect', function () {
     }
   })
 })
+
+class WattHistory
+{
+  constructor(initial)
+  {
+    this.wattHistory = []
+    this.initial = initial
+  }
+
+  push(value)
+  {
+    this.wattHistory.unshift(value)
+    this.wattHistory = this.wattHistory.slice(0,10)
+  }
+
+  average(initial)
+  {
+    if (this.wattHistory.length >= 10)
+    {
+      return (this.wattHistory.reduce((a, b) => a + b, 0))/(this.wattHistory.length)
+    } 
+    return initial
+  }
+
+  reasonable()
+  {
+    console.log(this.wattHistory)
+    console.log(this.average(this.initial))
+    return this.average(this.initial)*3
+  }
+}
  
 class Wattage extends React.Component
 {
@@ -65,16 +99,31 @@ class Frequency extends React.Component
   }
 }
 
+class StatusMessage extends React.Component
+{
+  render() {
+    return (
+      <div>{this.props.statusMessage}</div>
+    );
+  }
+}
+
 class MosquittoListener extends React.Component 
 {
   constructor(props) {
     super(props);
-    this.state = { watts: 0, totalWattHours: 0, frequency: 433.920, lastHeard: null };
+    this.state = { watts: 0, totalWattHours: 0, frequency: 433.920, lastHeard: null, statusMessage: "Initializing" };
     this.firstReading = null;
     this.revolutions = 0;
     this.lastReading = 0;
     this.last_gap_ts = null;
     this.last_impulse_ts = null;
+    this.wattHistory = new WattHistory(1500)
+  }
+
+  updateStatus(message) {
+    this.setState({statusMessage: message})
+    console.log(message)
   }
 
   componentDidMount() {
@@ -84,8 +133,19 @@ class MosquittoListener extends React.Component
         // Up to 3 packets are sent at once, ignore anything younger than 5 seconds
         if (packet["time"]>this.last_gap_ts+5) {
           var watts = Math.round(3600000.0/packet["gap"])
+          this.wattHistory.push(watts)
+          if (watts>this.wattHistory.reasonable()) {
+            this.updateStatus("Ignoring unlikely watt value")
+            watts = this.state.watts
+          }
+
           var seconds_since_last = 31
-          if (this.last_gap_ts != null) { seconds_since_last = packet["time"] - this.last_gap_ts }
+          if (this.last_gap_ts != null) {
+            seconds_since_last = packet["time"] - this.last_gap_ts
+          }
+          else {
+            this.updateStatus("Got first power record")
+          }
           var odoupdate = (watts*seconds_since_last)/3600;
           this.setState({watts: watts, totalWattHours: this.state.totalWattHours+odoupdate})
           console.log(message.toString())
@@ -98,10 +158,15 @@ class MosquittoListener extends React.Component
         if (packet["time"]>this.last_impulse_ts+8) {
           var reading=packet["impulses"]
           if (reading<this.lastReading) { this.revolutions++; }
-          if (this.firstReading==null) { this.firstReading = reading-this.state.totalWattHours};
+          if (this.firstReading==null) { 
+            this.firstReading = reading-this.state.totalWattHours; 
+            this.updateStatus("Got baseline reading of " + reading)
+          };
           var totalWattHours = reading+(65536*this.revolutions)-this.firstReading;
           var adjustment = totalWattHours-this.state.totalWattHours
-          console.log("Adjusting by " + adjustment.toFixed(1))
+          if (Math.abs(adjustment)>0.1){
+            this.updateStatus("Adjusted by " + adjustment.toFixed(1) + " Wh")
+          }
           this.lastReading = reading;
           this.setState({totalWattHours: totalWattHours})
           console.log(message.toString())
@@ -124,6 +189,9 @@ class MosquittoListener extends React.Component
         </div>
         <div className="frequency">
           <Frequency frequency={this.state.frequency} lastHeard={this.state.lastHeard} />
+        </div>
+        <div className="statusmessage">
+          <StatusMessage statusMessage={this.state.statusMessage} />
         </div>
         <div className="readme">
           <p>This page is a proof of concept to connect a home power meter to a live display on the web.</p>
