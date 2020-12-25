@@ -1,16 +1,8 @@
-//import logo from './logo.svg';
 import './App.css';
 import ReactSpeedometer from "react-d3-speedometer";
-// import Odometer from 'react-odometerjs';
-// import 'odometer/themes/odometer-theme-car.css'
 import NumberEasing from 'react-number-easing';
-  
-
 import React from 'react';
 import Moment from 'react-moment';
-import { Helmet } from 'react-helmet'
-
-Moment.startPooledTimer(2000);
 
 var mqtt = require('mqtt')
 
@@ -31,10 +23,6 @@ client.on('connect', function () {
  
 class Wattage extends React.Component
 {
-  // constructor(props) {
-  //   super(props);
-  // }
-
   render() {
 		return (
 			<ReactSpeedometer value={this.props.watts} minValue={0} maxValue={6000} 
@@ -52,10 +40,6 @@ class Wattage extends React.Component
 
 class WattHours extends React.Component 
 {
-  // constructor(props) {
-  //   super(props);
-  // }
-
   render() {
     return (
       <div><NumberEasing value={this.props.totalWattHours} speed={31000} decimals={1} ease="linear" /> Wh consumed</div>
@@ -103,8 +87,6 @@ class MosquittoListener extends React.Component
           var seconds_since_last = 31
           if (this.last_gap_ts != null) { seconds_since_last = packet["time"] - this.last_gap_ts }
           var odoupdate = (watts*seconds_since_last)/3600;
-          // console.log(odoupdate)
-          // console.log(this.state.totalWattHours)
           this.setState({watts: watts, totalWattHours: this.state.totalWattHours+odoupdate})
           console.log(message.toString())
         }
@@ -112,8 +94,8 @@ class MosquittoListener extends React.Component
         this.last_gap_ts=packet["time"]
       }
       if ("impulses" in packet) {
-        // Up to 3 packets are sent at once, ignore anything younger than 5 seconds
-        if (packet["time"]>this.last_impulse_ts+5) {
+        // Up to 2 packets are sent at once, ignore anything younger than 8 seconds
+        if (packet["time"]>this.last_impulse_ts+8) {
           var reading=packet["impulses"]
           if (reading<this.lastReading) { this.revolutions++; }
           if (this.firstReading==null) { this.firstReading = reading-this.state.totalWattHours};
@@ -161,15 +143,9 @@ class MosquittoListener extends React.Component
 }
 
 function App() {
-
-
+  document.title = "Power meter live display proof of concept"
   return (
-    <>
-    <Helmet>
-      <title>Power meter live display proof of concept</title>
-    </Helmet>
     <MosquittoListener />
-    </>
   );
 }
 
