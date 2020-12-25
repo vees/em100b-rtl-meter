@@ -13,3 +13,48 @@ In this way it is as close to a real time information display as can be done for
 Repository is at [https://github.com/vees/em100b-rtl-meter](https://github.com/vees/em100b-rtl-meter)
 
 # Setup Instructions
+
+## rtl_433 version
+
+Minimum build for rtl_433 is [revision a20cd1a](https://github.com/merbanan/rtl_433/commit/a20cd1a62caa52dad97e4a99f8373b2fba3986d9) that contains 
+jbrzozoski pull request for "Blueline PowerCost Monitor" support. This code will probably not be in a formal release for a few months so it needs to built from code that includes the `devices/blueline.c` code.
+
+Follow the instructions for priming the meter from the comments:
+
+	1) Start rtl_433
+	2) Tap the button or power cycle the monitor
+	3) Look for the rtl_433 output indicating the BlueLine monitor ID and note the ID field
+	4) Stop rtl_433
+	5) Restart rtl_433, explicitly passing the ID as a parameter to this decoder
+
+	For example, if you see the ID 45364 in step 3, you would start the decoder with a command like:
+	rtl_433 -R 176:45364
+
+## rtl_433.conf
+
+Rather than stack a bunch of command line options, add specfic config options that include the 176 protocol and monitor ID.
+
+	output json
+	protocol 176:45364
+	report_meta level
+	report_meta time:unix
+	report_meta protocol
+
+## rtl_443 to mosquitto_pub
+
+The channel and server need to match the one in App.js but otherwise are arbitrary.
+
+	$ ./rtl_433 | mosquitto_pub -h test.mosquitto.org -t home/rtl_433 -l
+	rtl_433 version 20.11-8-g8773ec4d branch blueline at 202012201933 inputs file rtl_tcp RTL-SDR SoapySDR
+	Use -h for usage help and see https://triq.org/ for documentation.
+	Trying conf file at "rtl_433.conf"...
+	Reading conf from "rtl_433.conf".
+	Registered 1 out of 176 device decoding protocols [ ]
+	Detached kernel driver
+	Found Fitipower FC0013 tuner
+	Exact sample rate is: 250000.000414 Hz
+	Sample rate set to 250000 S/s.
+	Tuner gain set to Auto.
+	Tuned to 433.920MHz.
+	Allocating 15 zero-copy buffers
+
