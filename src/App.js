@@ -24,8 +24,8 @@ client.on('connect', function () {
 class Wattage extends React.Component
 {
   render() {
-		return (
-			<ReactSpeedometer value={this.props.watts} minValue={0} maxValue={6000} 
+    return (
+      <ReactSpeedometer value={this.props.watts} minValue={0} maxValue={6000} 
         startColor="green"
         segments={6}
         endColor="red"
@@ -34,7 +34,7 @@ class Wattage extends React.Component
         needleTransitionDuration={15000}
         height={300}
       />
-		);
+    );
   }
 }
 
@@ -100,7 +100,7 @@ class MosquittoListener extends React.Component
           if (reading<this.lastReading) { this.revolutions++; }
           if (this.firstReading==null) { this.firstReading = reading-this.state.totalWattHours};
           var totalWattHours = reading+(65536*this.revolutions)-this.firstReading;
-          var adjustment = this.state.totalWattHours-totalWattHours
+          var adjustment = totalWattHours-this.state.totalWattHours
           console.log("Adjusting by " + adjustment.toFixed(1))
           this.lastReading = reading;
           this.setState({totalWattHours: totalWattHours})
