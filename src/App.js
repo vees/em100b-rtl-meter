@@ -26,10 +26,10 @@ client.on('connect', function () {
 
 class WattHistory
 {
-  constructor(initial)
+  constructor(minReasonable)
   {
     this.wattHistory = []
-    this.initial = initial
+    this.minReasonable = minReasonable
   }
 
   push(value)
@@ -38,20 +38,20 @@ class WattHistory
     this.wattHistory = this.wattHistory.slice(0,10)
   }
 
-  average(initial)
+  average()
   {
     if (this.wattHistory.length >= 10)
     {
       return (this.wattHistory.reduce((a, b) => a + b, 0))/(this.wattHistory.length)
     } 
-    return initial
+    return null
   }
 
   reasonable()
   {
     console.log(this.wattHistory)
     console.log(this.average(this.initial))
-    return this.average(this.initial)*3
+    return Math.max(this.average(this.initial)*3,this.minReasonable)
   }
 }
  
@@ -108,17 +108,32 @@ class StatusMessage extends React.Component
   }
 }
 
+class MeterTemperature extends React.Component 
+{
+  render() {
+    if (this.props.temperature == null)
+    {
+      return (<div>Waiting on temperature</div>)
+    }
+    var temp_c = this.props.temperature
+    var temp_f = (temp_c*(9/5))+32
+    return (
+      <div>Latest temperature {temp_f.toFixed(1)}&deg;F</div>
+    );
+  }
+}
+
 class MosquittoListener extends React.Component 
 {
   constructor(props) {
     super(props);
-    this.state = { watts: 0, totalWattHours: 0, frequency: 433.920, lastHeard: null, statusMessage: "Initializing" };
+    this.state = { watts: 0, totalWattHours: 0, frequency: 433.920, lastHeard: null, statusMessage: "Initializing", temperature: null };
     this.firstReading = null;
     this.revolutions = 0;
     this.lastReading = 0;
     this.last_gap_ts = null;
     this.last_impulse_ts = null;
-    this.wattHistory = new WattHistory(1500)
+    this.wattHistory = new WattHistory(3000)
   }
 
   updateStatus(message) {
@@ -174,6 +189,9 @@ class MosquittoListener extends React.Component
         else { console.log("duplicate impulse ignored") }
         this.last_impulse_ts=packet["time"]
       }
+      if ("temperature_C" in packet) {
+        this.setState({temperature: packet["temperature_C"]})
+      }
       this.setState({frequency: packet["freq"], lastHeard: packet["time"]})
     })
   }
@@ -184,6 +202,9 @@ class MosquittoListener extends React.Component
         <div className="meters">
           <Wattage watts={this.state.watts} />
         </div>
+        <div className="temperature">
+          <MeterTemperature temperature={this.state.temperature} />
+        </div>        
         <div className="totals">
           <WattHours totalWattHours={this.state.totalWattHours} />
         </div>
